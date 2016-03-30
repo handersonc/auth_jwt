@@ -1,9 +1,9 @@
 from setuptools import setup
 
 setup(name='auth_jwt',
-      version='0.3.1',
-      description='Module to make segure apis cross jwt token',
-      url='https://github.com/handerson2014/apis-security.git',
+      version='0.3.2',
+      description='Module to give secure the api with jwt token',
+      url='https://github.com/handerson2014/auth_jwt.git',
       author='Handerson Contreras',
       author_email='handerson.contreras@gmail.com',
       license='MIT',
