@@ -51,7 +51,7 @@ def verify_client_request(client):
             """Inner."""
             if self:
                 if issubclass(self.__class__, Resource):
-                    if 'Inbound-Appid' in request.headers:
+                    if 'HTTP_INBOUND_APPID' in request.headers:
                         inbound_app_id = request.headers.get('HTTP_INBOUND_APPID')
                         client_info = get_client_info_from_token(inbound_app_id)
                         if 'client_id' in client_info:
