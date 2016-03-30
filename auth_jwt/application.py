@@ -1,5 +1,6 @@
 import jwt
 import logging
+import os
 from datetime import datetime, timedelta
 from flask_restful import Resource, abort
 from flask import request
@@ -25,18 +26,21 @@ def verify_jwt_flask(token, secret):
         return False
 
 
-def create_jwt(client_id, secret):
+def create_jwt():
     """Create a new token."""
-    token = jwt.encode(
-        {
-            'client_id': client_id,
-            'exp': datetime.utcnow() + timedelta(minutes=60)
-        },
-        secret,
-        algorithm='HS256'
-    )
+    if 'SECRET_TOKEN' in os.environ and 'APP_CLIENT_ID' in os.environ:
+        token = jwt.encode(
+            {
+                'client_id': os.environ['APP_CLIENT_ID'],
+                'exp': datetime.utcnow() + timedelta(minutes=60)
+            },
+            os.environ['SECRET_TOKEN'],
+            algorithm='HS256'
+        )
 
-    return token
+        return token
+    else:
+        raise 'Missing SECRET_TOKEN or/and APP_CLIENT_ID valiables.'
 
 
 def verify_client_request(client):
@@ -48,7 +52,7 @@ def verify_client_request(client):
             if self:
                 if issubclass(self.__class__, Resource):
                     if 'Inbound-Appid' in request.headers:
-                        inbound_app_id = request.headers.get('Inbound-Appid')
+                        inbound_app_id = request.headers.get('HTTP_INBOUND_APPID')
                         client_info = get_client_info_from_token(inbound_app_id)
                         if 'client_id' in client_info:
                             client_id = client_info['client_id']

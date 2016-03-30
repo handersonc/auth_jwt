@@ -1,8 +1,8 @@
 Metadata-Version: 1.0
 Name: auth-jwt
-Version: 0.3.1
-Summary: Module to make segure apis cross jwt token
-Home-page: https://github.com/handerson2014/apis-security.git
+Version: 0.3.2
+Summary: Module to give secure the api with jwt token
+Home-page: https://github.com/handerson2014/auth_jwt.git
 Author: Handerson Contreras
 Author-email: handerson.contreras@gmail.com
 License: MIT
