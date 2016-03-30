@@ -1,10 +1,16 @@
 import jwt
 import logging
 import os
+import json
 from datetime import datetime, timedelta
-from flask_restful import Resource, abort
-from flask import request
 from helpers import get_client_info_from_token
+
+try:
+    import webapp2
+    from flask_restful import Resource, abort
+    from flask import request
+except:
+    pass
 
 
 def verify_jwt_flask(token, secret):
@@ -40,7 +46,7 @@ def create_jwt():
 
         return token
     else:
-        raise 'Missing SECRET_TOKEN or/and APP_CLIENT_ID valiables.'
+        raise Exception('Missing SECRET_TOKEN or/and APP_CLIENT_ID valiables.')
 
 
 def verify_client_request(client):
@@ -88,3 +94,20 @@ def verify_client_request(client):
                 raise
         return inner
     return func
+
+
+def limit_access(func):
+    """Limit access to fronted application."""
+    def inner(self, *args, **kwargs):
+        if issubclass(self.__class__, webapp2.RequestHandler):
+            if 'HOST' in self.request.headers:
+                if 'ALLOWED_HOSTS' in os.environ:
+                    if self.request.headers.get('HOST') in os.environ['ALLOWED_HOSTS']:
+                        return func(self)
+                    else:
+                        self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
+                        self.response.set_status(401)
+            else:
+                self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
+                self.response.set_status(401)
+    return inner
