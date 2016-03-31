@@ -49,6 +49,17 @@ def create_jwt():
         raise Exception('Missing SECRET_TOKEN or/and APP_CLIENT_ID valiables.')
 
 
+def create_jwt_with(payload, secret):
+    """Create a new token."""
+    token = jwt.encode(
+        payload,
+        secret,
+        algorithm='HS256'
+    )
+
+    return token
+
+
 def verify_client_request(client):
     """Verify requests from web clients."""
     def func(origin):
@@ -57,8 +68,9 @@ def verify_client_request(client):
             """Inner."""
             if self:
                 if issubclass(self.__class__, Resource):
-                    if 'HTTP_INBOUND_APPID' in request.headers:
-                        inbound_app_id = request.headers.get('HTTP_INBOUND_APPID')
+                    if 'Authorization' in request.headers:
+                        authorization_header = request.headers.get('Authorization')
+                        inbound_app_id = authorization_header.split(' ')[1]
                         client_info = get_client_info_from_token(inbound_app_id)
                         if 'client_id' in client_info:
                             client_id = client_info['client_id']
@@ -107,6 +119,9 @@ def limit_access(func):
                     else:
                         self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
                         self.response.set_status(401)
+                else:
+                    self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized: Please set ALLOWED_HOSTS environment variable'}))
+                    self.response.set_status(401)
             else:
                 self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
                 self.response.set_status(401)
