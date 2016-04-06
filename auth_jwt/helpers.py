@@ -1,6 +1,8 @@
 import json
 import base64
 
+CONFIG_FILE_PATH = 'auth_jwt_settings.json'
+
 
 def get_client_info_from_token(token):
     """get_user_info_from_token."""
@@ -25,3 +27,12 @@ def get_client_info_from_token(token):
     jwt = json.loads(decoded)
 
     return jwt
+
+
+def get_configuration_from_file():
+    """Get configuration from configuration file."""
+    with open(CONFIG_FILE_PATH) as data_file:
+        settings = json.load(data_file)
+        data_file.close()
+
+        return settings

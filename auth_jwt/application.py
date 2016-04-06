@@ -3,7 +3,7 @@ import logging
 import os
 import json
 from datetime import datetime, timedelta
-from helpers import get_client_info_from_token
+from helpers import get_client_info_from_token, get_configuration_from_file
 
 try:
     import webapp2
@@ -101,9 +101,39 @@ def verify_client_request(client):
                         abort(401, message='Unauthorized')
                 else:
                     raise Exception('Unsupported class')
-
             else:
                 raise
+        return inner
+    return func
+
+
+def verify_user_request(user):
+    """Verify requests from web clients."""
+    def func(origin):
+        """Inner."""
+        def inner(self, *args, **kwargs):
+            """Inner."""
+            if self:
+                if issubclass(self.__class__, Resource):
+                    if 'Authorization' in request.headers:
+                        authorization_header = request.headers.get('Authorization')
+                        inbound_app_id = authorization_header.split(' ')[1]
+                        client_info = get_client_info_from_token(inbound_app_id)
+                        if 'profile_id' in client_info:
+                            profile_id = client_info['profile_id']
+                            settings = get_configuration_from_file()
+                            user_settings = settings['User']['Fields']
+                            obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
+
+                        else:
+                            abort(401, message='Unauthorized')
+                    else:
+                        abort(401, message='Unauthorized')
+                else:
+                    raise Exception('Unsupported class')
+            else:
+                raise
+            return origin(self, *args, **kwargs)
         return inner
     return func
 
@@ -115,6 +145,7 @@ def limit_access(func):
             if 'HOST' in self.request.headers:
                 if 'ALLOWED_HOSTS' in os.environ:
                     if self.request.headers.get('HOST') in os.environ['ALLOWED_HOSTS']:
+                        print self.request.headers.get('HOST'), os.environ['ALLOWED_HOSTS']
                         return func(self)
                     else:
                         self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
