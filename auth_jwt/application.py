@@ -84,6 +84,7 @@ def verify_client_request(client):
                                     if 'HOST' in request.headers:
                                         if obj_client.urls_white_list:
                                             if request.headers.get('HOST') in obj_client.urls_white_list:
+                                                setattr(self, 'client', obj_client)
                                                 return origin(self, *args, **kwargs)
                                             else:
                                                 abort(403, message='Forbbiden: origin is not allowed')
@@ -119,16 +120,17 @@ def verify_user_request(user):
                         authorization_header = request.headers.get('Authorization')
                         inbound_app_id = authorization_header.split(' ')[1]
                         client_info = get_client_info_from_token(inbound_app_id)
-                        if 'profile_id' in client_info:
-                            profile_id = client_info['profile_id']
+                        if 'user' in client_info and 'profile_id' in client_info['user']:
                             settings = get_configuration_from_file()
                             user_settings = settings['User']['Fields']
-                            obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
+                            profile_id = client_info['user'][user_settings['UserId']]
 
-                        else:
-                            abort(401, message='Unauthorized')
-                    else:
-                        abort(401, message='Unauthorized')
+                            obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
+                            if obj_user:
+                                setattr(self, 'user', obj_user)
+                                return origin(self, *args, **kwargs)
+
+                    abort(401, message='Unauthorized')
                 else:
                     raise Exception('Unsupported class')
             else:
