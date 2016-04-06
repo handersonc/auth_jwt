@@ -120,11 +120,10 @@ def verify_user_request(user):
                         authorization_header = request.headers.get('Authorization')
                         inbound_app_id = authorization_header.split(' ')[1]
                         client_info = get_client_info_from_token(inbound_app_id)
-                        if 'user' in client_info and 'profile_id' in client_info['user']:
-                            settings = get_configuration_from_file()
-                            user_settings = settings['User']['Fields']
-                            profile_id = client_info['user'][user_settings['UserId']]
-
+                        settings = get_configuration_from_file()
+                        user_settings = settings['User']['Fields']
+                        profile_id = client_info['user'][user_settings['UserId']]
+                        if 'user' in client_info and profile_id in client_info['user']:
                             obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
                             if obj_user:
                                 setattr(self, 'user', obj_user)
