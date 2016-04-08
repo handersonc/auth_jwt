@@ -81,9 +81,9 @@ def verify_client_request(client):
                                 decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
                                 if decoded_token:
                                     logging.warning(request.headers)
-                                    if 'HOST' in request.headers:
+                                    if 'Origin' in request.headers:
                                         if obj_client.urls_white_list:
-                                            if request.headers.get('HOST') in obj_client.urls_white_list:
+                                            if request.headers.get('Origin') in obj_client.urls_white_list:
                                                 setattr(self, 'client', obj_client)
                                                 return origin(self, *args, **kwargs)
                                             else:
@@ -143,10 +143,10 @@ def limit_access(func):
     """Limit access to fronted application."""
     def inner(self, *args, **kwargs):
         if issubclass(self.__class__, webapp2.RequestHandler):
-            if 'HOST' in self.request.headers:
+            if 'Origin' in self.request.headers:
                 if 'ALLOWED_HOSTS' in os.environ:
-                    if self.request.headers.get('HOST') in os.environ['ALLOWED_HOSTS']:
-                        print self.request.headers.get('HOST'), os.environ['ALLOWED_HOSTS']
+                    if self.request.headers.get('Origin') in os.environ['ALLOWED_HOSTS']:
+                        print self.request.headers.get('Origin'), os.environ['ALLOWED_HOSTS']
                         return func(self)
                     else:
                         self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
