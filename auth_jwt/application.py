@@ -13,6 +13,75 @@ except:
     pass
 
 
+def verify_client(self, client):
+    if self:
+        if issubclass(self.__class__, Resource):
+            if 'Authorization' in request.headers:
+                authorization_header = request.headers.get('Authorization')
+                inbound_app_id = authorization_header.split(' ')[1]
+                client_info = get_client_info_from_token(inbound_app_id)
+                if 'client_id' in client_info:
+                    client_id = client_info['client_id']
+                    obj_client = client.query(client.client_id == client_id).get()
+                    logging.warning("Client: %s" % obj_client)
+
+                    if obj_client:
+                        decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
+                        if decoded_token:
+                            logging.warning(request.headers)
+                            if 'Origin' in request.headers:
+                                if obj_client.urls_white_list:
+                                    if request.headers.get('Origin') in obj_client.urls_white_list:
+                                        return obj_client
+                                        setattr(origin.__self__, 'client', obj_client)
+                                    else:
+                                        abort(403, message='Forbbiden: origin is not allowed')
+                                else:
+                                    abort(403, message='Forbbiden: client does not have configured origin hosts')
+                            else:
+                                abort(403, message='Forbbiden: unknow host')
+                        else:
+                            abort(403, message='Forbbiden: invalid token')
+                    else:
+                        abort(401, message='Unauthorized')
+                else:
+                    abort(401, message='Unauthorized')
+            else:
+                abort(401, message='Unauthorized')
+        else:
+            raise Exception('Unsupported class')
+    else:
+        raise
+
+
+def verify_user(self, user):
+    if self:
+        if issubclass(self.__class__, Resource):
+            logging.warning('verifying user requests')
+            if 'Authorization' in request.headers:
+                authorization_header = request.headers.get('Authorization')
+                inbound_app_id = authorization_header.split(' ')[1]
+                client_info = get_client_info_from_token(inbound_app_id)
+                settings = get_configuration_from_file()
+                user_settings = settings['User']['Fields']
+                profile_id = client_info['user'][user_settings['UserId']]
+                if 'user' in client_info and user_settings['UserId'] in client_info['user']:
+                    obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
+                    if obj_user:
+                        return(obj_user)
+                    else:
+                        abort(401, message='User not found')
+                else:
+                    abort(401, message='Configuration issue')
+            else:
+                abort(401, message='Unauthorized')
+        else:
+            raise Exception('Unsupported class')
+    else:
+        raise
+    return ''
+
+
 def verify_jwt_flask(token, secret):
     """Verify if token is valid."""
     options = {
@@ -66,44 +135,9 @@ def verify_client_request(client):
         """Inner."""
         def inner(self, *args, **kwargs):
             """Inner."""
-            if self:
-                if issubclass(self.__class__, Resource):
-                    if 'Authorization' in request.headers:
-                        authorization_header = request.headers.get('Authorization')
-                        inbound_app_id = authorization_header.split(' ')[1]
-                        client_info = get_client_info_from_token(inbound_app_id)
-                        if 'client_id' in client_info:
-                            client_id = client_info['client_id']
-                            obj_client = client.query(client.client_id == client_id).get()
-                            logging.warning("Client: %s" % obj_client)
-
-                            if obj_client:
-                                decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
-                                if decoded_token:
-                                    logging.warning(request.headers)
-                                    if 'Origin' in request.headers:
-                                        if obj_client.urls_white_list:
-                                            if request.headers.get('Origin') in obj_client.urls_white_list:
-                                                setattr(self, 'client', obj_client)
-                                                return origin(self, *args, **kwargs)
-                                            else:
-                                                abort(403, message='Forbbiden: origin is not allowed')
-                                        else:
-                                            abort(403, message='Forbbiden: client does not have configured origin hosts')
-                                    else:
-                                        abort(403, message='Forbbiden: unknow host')
-                                else:
-                                    abort(403, message='Forbbiden: invalid token')
-                            else:
-                                abort(401, message='Unauthorized')
-                        else:
-                            abort(401, message='Unauthorized')
-                    else:
-                        abort(401, message='Unauthorized')
-                else:
-                    raise Exception('Unsupported class')
-            else:
-                raise
+            obj_client = verify_client(self, client)
+            setattr(self, 'client', obj_client)
+            return origin(self, *args, **kwargs)
         return inner
     return func
 
@@ -114,33 +148,28 @@ def verify_user_request(user):
         """Inner."""
         def inner(self, *args, **kwargs):
             """Inner."""
-            if self:
-                if issubclass(self.__class__, Resource):
-                    logging.warning('verifying user requests')
-                    if 'Authorization' in request.headers:
-                        authorization_header = request.headers.get('Authorization')
-                        inbound_app_id = authorization_header.split(' ')[1]
-                        client_info = get_client_info_from_token(inbound_app_id)
-                        settings = get_configuration_from_file()
-                        user_settings = settings['User']['Fields']
-                        profile_id = client_info['user'][user_settings['UserId']]
-                        if 'user' in client_info and user_settings['UserId'] in client_info['user']:
-                            obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
-                            if obj_user:
-                                setattr(self, 'user', obj_user)
-                                return origin(self, *args, **kwargs)
-                            else:
-                                abort(401, message='User not found')
-                        else:
-                            abort(401, message='Configuration issue')
-                    else:
-                        abort(401, message='Unauthorized')
-                else:
-                    raise Exception('Unsupported class')
-            else:
-                raise
+            obj_user = verify_user(self, user)
+            if obj_user != '':
+                setattr(self, 'user', obj_user)
             return origin(self, *args, **kwargs)
         return inner
+    return func
+
+
+def verify_client_and_user_request(user, client):
+    """Verify requests from web clients."""
+    def func(origin):
+        """Inner."""
+        def inner(*args, **kwargs):
+            self = origin.__self__
+            obj_client = verify_client(self, client)
+            setattr(origin.__self__, 'client', obj_client)
+            obj_user = verify_user(self, user)
+            if obj_user != '':
+                setattr(origin.__self__, 'user', obj_user)
+            return origin(*args, **kwargs)
+        return inner
+
     return func
 
 
@@ -152,7 +181,7 @@ def limit_access(func):
                 if 'ALLOWED_HOSTS' in os.environ:
                     if self.request.headers.get('Origin') in os.environ['ALLOWED_HOSTS']:
                         print self.request.headers.get('Origin'), os.environ['ALLOWED_HOSTS']
-                        return func(self)
+                        return func(self,*args, **kwargs)
                     else:
                         self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
                         self.response.set_status(401)
@@ -162,4 +191,16 @@ def limit_access(func):
             else:
                 self.response.out.write(json.dumps({'status': 401, 'message': 'Unauthorized'}))
                 self.response.set_status(401)
+        elif issubclass(self.__class__, Resource):
+            if 'Origin' in request.headers:
+                if 'ALLOWED_HOSTS' in os.environ:
+                    if request.headers.get('Origin') in os.environ['ALLOWED_HOSTS']:
+                        print request.headers.get('Origin'), os.environ['ALLOWED_HOSTS']
+                        return func(self,*args, **kwargs)
+                    else:
+                        abort(401, message="Unauthorized no allowed_host")
+                else:
+                    abort(401, message="Unauthorized: Please set ALLOWED_HOSTS environment variable")
+            else:
+                abort(401, message="Unauthorized no origin")
     return inner
