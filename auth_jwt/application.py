@@ -116,6 +116,7 @@ def verify_user_request(user):
             """Inner."""
             if self:
                 if issubclass(self.__class__, Resource):
+                    logging.warning('verifying user requests')
                     if 'Authorization' in request.headers:
                         authorization_header = request.headers.get('Authorization')
                         inbound_app_id = authorization_header.split(' ')[1]
@@ -123,13 +124,17 @@ def verify_user_request(user):
                         settings = get_configuration_from_file()
                         user_settings = settings['User']['Fields']
                         profile_id = client_info['user'][user_settings['UserId']]
-                        if 'user' in client_info and profile_id in client_info['user']:
+                        if 'user' in client_info and user_settings['UserId'] in client_info['user']:
                             obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
                             if obj_user:
                                 setattr(self, 'user', obj_user)
                                 return origin(self, *args, **kwargs)
-
-                    abort(401, message='Unauthorized')
+                            else:
+                                abort(401, message='User not found')
+                        else:
+                            abort(401, message='Configuration issue')
+                    else:
+                        abort(401, message='Unauthorized')
                 else:
                     raise Exception('Unsupported class')
             else:
