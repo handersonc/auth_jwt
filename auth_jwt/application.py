@@ -28,16 +28,21 @@ def verify_client(self, client):
                     if obj_client:
                         decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
                         if decoded_token:
-                            logging.warning(request.headers)
                             if 'Origin' in request.headers:
-                                if obj_client.urls_white_list:
-                                    if request.headers.get('Origin') in obj_client.urls_white_list:
-                                        return obj_client
-                                        setattr(origin.__self__, 'client', obj_client)
+                                if (
+                                    request.remote_addr == '127.0.0.1' and
+                                    'localhost' in request.headers.get('Origin')
+                                ) or request.remote_addr != '127.0.0.1':
+                                    if obj_client.urls_white_list:
+                                        if request.headers.get('Origin') in obj_client.urls_white_list:
+                                            return obj_client
+                                            setattr(origin.__self__, 'client', obj_client)
+                                        else:
+                                            abort(403, message='Forbbiden: origin is not allowed')
                                     else:
-                                        abort(403, message='Forbbiden: origin is not allowed')
+                                        abort(403, message='Forbbiden: client does not have configured origin hosts')
                                 else:
-                                    abort(403, message='Forbbiden: client does not have configured origin hosts')
+                                    abort(401, message='Unauthorized')
                             else:
                                 abort(403, message='Forbbiden: unknow host')
                         else:
