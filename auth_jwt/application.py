@@ -9,6 +9,8 @@ try:
     import webapp2
     from flask_restful import Resource, abort
     from flask import request
+    from ferris3 import Service
+    import ferris3 as f3
 except:
     pass
 
@@ -23,7 +25,7 @@ def verify_client(self, client):
                 if 'client_id' in client_info:
                     client_id = client_info['client_id']
                     obj_client = client.query(client.client_id == client_id).get()
-                    logging.warning("Client: %s" % obj_client)
+                    logging.info("Client: %s" % obj_client)
 
                     if obj_client:
                         decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
@@ -36,7 +38,6 @@ def verify_client(self, client):
                                     if obj_client.urls_white_list:
                                         if request.headers.get('Origin') in obj_client.urls_white_list:
                                             return obj_client
-                                            setattr(origin.__self__, 'client', obj_client)
                                         else:
                                             abort(403, message='Forbbiden: origin is not allowed')
                                     else:
@@ -53,6 +54,49 @@ def verify_client(self, client):
                     abort(401, message='Unauthorized')
             else:
                 abort(401, message='Unauthorized')
+        elif issubclass(self.__class__, Service):
+            headers = self.request_state._HttpRequestState__headers
+            logging.info(headers)
+
+            if 'Authorization' in headers:
+                authorization_header = headers['Authorization']
+                inbound_app_id = authorization_header.split(' ')[1]
+                client_info = get_client_info_from_token(inbound_app_id)
+
+                if 'client_id' in client_info:
+                    client_id = client_info['client_id']
+                    obj_client = client.query(client.client_id == client_id).get()
+                    logging.info("Client: %s" % obj_client)
+
+                    if obj_client:
+                        decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
+                        if decoded_token:
+                            if 'Origin' in request.headers:
+                                if (
+                                    request.remote_addr == '127.0.0.1' and
+                                    'localhost' in request.headers.get('Origin')
+                                ) or request.remote_addr != '127.0.0.1':
+                                    if obj_client.urls_white_list:
+                                        if request.headers.get('Origin') in obj_client.urls_white_list:
+                                            return obj_client
+                                        else:
+                                            raise f3.ForbiddenException('Forbbiden: origin is not allowed')
+                                    else:
+                                        raise f3.ForbiddenException('Forbbiden: client does not have configured origin hosts')
+                                else:
+                                    raise f3.ForbiddenException('Unauthorized')
+                            else:
+                                raise f3.ForbiddenException('Forbbiden: unknow host')
+                        else:
+                            raise f3.ForbiddenException('Forbbiden: invalid token')
+                    else:
+                        raise f3.ForbiddenException('Unauthorized')
+                else:
+                    raise f3.ForbiddenException('Unauthorized')
+
+            else:
+                logging.warning('Authorization header is not found')
+                raise f3.ForbiddenException('Unauthorized')
         else:
             raise Exception('Unsupported class')
     else:
@@ -201,7 +245,7 @@ def limit_access(func):
                 if 'ALLOWED_HOSTS' in os.environ:
                     if request.headers.get('Origin') in os.environ['ALLOWED_HOSTS']:
                         print request.headers.get('Origin'), os.environ['ALLOWED_HOSTS']
-                        return func(self,*args, **kwargs)
+                        return func(self, *args, **kwargs)
                     else:
                         abort(401, message="Unauthorized no allowed_host")
                 else:
