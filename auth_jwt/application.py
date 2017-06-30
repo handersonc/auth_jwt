@@ -26,7 +26,11 @@ def verify_client(self, client):
                     logging.warning("Client: %s" % obj_client)
 
                     if obj_client:
-                        decoded_token = verify_jwt_flask(inbound_app_id, obj_client.client_secret)
+                        decoded_token = verify_jwt_flask(
+                            inbound_app_id,
+                            obj_client.client_secret,
+                            obj_client.verify_expiration\
+                            if hasattr(obj_client, 'verify_expiration') else True)
                         if decoded_token:
                             if 'Origin' in request.headers:
                                 if (
@@ -87,11 +91,11 @@ def verify_user(self, user):
     return ''
 
 
-def verify_jwt_flask(token, secret):
+def verify_jwt_flask(token, secret, verify_exp=True):
     """Verify if token is valid."""
     options = {
         'verify_signature': True,
-        'verify_exp': True
+        'verify_exp': verify_exp
     }
     try:
         decoded_token = jwt.decode(token, secret, options=options)
