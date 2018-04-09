@@ -81,7 +81,7 @@ def verify_user(self, user):
                     logging.debug('user in decorator: id:%s, email:%s', obj_user.profile_id, obj_user.email)
                     if obj_user:
                         if email.lower() != obj_user.email.lower():
-                            abort(498, message='Invalid email')
+                            abort(401, message='Invalid Session')
                         return(obj_user)
                     else:
                         abort(401, message='User not found')
