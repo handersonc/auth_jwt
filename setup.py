@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='auth_jwt',
-      version='0.1.7',
+      version='0.1.8',
       description='Module to give secure the api with jwt token',
       url='https://github.com/handersonc/auth_jwt.git',
       author='Handerson Contreras',
