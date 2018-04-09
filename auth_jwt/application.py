@@ -74,9 +74,14 @@ def verify_user(self, user):
                 settings = get_configuration_from_file()
                 user_settings = settings['User']['Fields']
                 profile_id = client_info['user'][user_settings['UserId']]
+                email = client_info['user'][user_settings['Email']]
+
                 if 'user' in client_info and user_settings['UserId'] in client_info['user']:
                     obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
+                    logging.debug('user in decorator: id:%s, email:%s', obj_user.profile_id, obj_user.email)
                     if obj_user:
+                        if email.lower() != obj_user.email.lower():
+                            abort(498, message='Invalid email')
                         return(obj_user)
                     else:
                         abort(401, message='User not found')
