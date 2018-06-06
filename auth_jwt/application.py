@@ -40,7 +40,6 @@ def verify_client(self, client):
                                     if obj_client.urls_white_list:
                                         if request.headers.get('Origin') in obj_client.urls_white_list:
                                             return obj_client
-                                            setattr(origin.__self__, 'client', obj_client)
                                         else:
                                             abort(403, message='Forbbiden: origin is not allowed')
                                     else:
@@ -73,13 +72,16 @@ def verify_user(self, user):
                 client_info = get_client_info_from_token(inbound_app_id)
                 settings = get_configuration_from_file()
                 user_settings = settings['User']['Fields']
-                profile_id = client_info['user'][user_settings['UserId']]
-                email = client_info['user'][user_settings['Email']]
+                profile_id = client_info.get('user', {}).get(user_settings['UserId'])
+                email = client_info.get('user', {}).get(user_settings['Email'], '')
 
-                if 'user' in client_info and user_settings['UserId'] in client_info['user']:
+                if profile_id:
                     obj_user = user.query(getattr(user, user_settings['UserId']) == profile_id).get()
-                    logging.debug('user in decorator: id:%s, email:%s', obj_user.profile_id, obj_user.email)
                     if obj_user:
+                        logging.debug(
+                            'user in decorator: id:%s, email:%s, incomming_email:%s',
+                            obj_user.profile_id, 
+                            obj_user.email, email)
                         if email.lower() != obj_user.email.lower():
                             abort(498, message='Invalid email')
                         return(obj_user)
